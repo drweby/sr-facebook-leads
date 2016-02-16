@@ -1,0 +1,16 @@
+.left_block{float:left;width:420px;margin-right:20px;}
+.left_block textarea {width:100%;font-size:13px;}
+.right_block{float:left;}
+.form_row {padding:6px 0;}
+.form_row label {font-weight: bold;display: inline-block;min-width: 140px;}
+#pages_block {display:none;}
+#pages_list li {color:#00a0d2;text-decoration:underline;cursor:pointer;padding: 4px 20px;}
+#mapping_block {display:none;}
+#templates {display:none;}
+.validation_error {color: crimson;background: cornsilk;padding: 3px 6px;margin-bottom: 14px;}
+.confirm {color: forestgreen;background: ghostwhite;padding: 3px 6px;margin-bottom: 14px;}
+#manual {clear:both;padding-top:30px;}
+#manual ul {list-style-type: circle;}
+#manual ul li {margin-left:20px;}
+#save_conf_block{display:none;}
+.left_block code {font-size:16px;}
