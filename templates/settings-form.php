@@ -38,9 +38,12 @@
                 <label for="fld_lead_app_secret">App Secret</label>
                 <input id="fld_lead_app_secret" value="">
             </div>
+            <div class="form_row">
+                <ul id="processStatus"></ul>
+            </div>
             <div class="form_row" id="list_btn_block">
                 <br>
-                <button class="button" id="listBtn">List available pages</button>
+                <button class="button" id="startSubscription">Start Subscription Process</button>
             </div>
             <div class="form_row" id="pages_block">
                 <h3>Choose a page that should be subscribed to the App</h3> 
@@ -61,22 +64,13 @@
                 <ul>
                     <li>Login Facebook under user having full access to needed Pages and their Lead forms</li>
                     <li>Go to https://developers.facebook.com/ and add new Website App (Category = Apps for pages). Specify name and skip any quick starters.</li>
-                    <li>On the created App dashboard go to Webhooks section and create new Subscription (type=Page)</li>
-                    <li>
-                        <ul>
-                            <li><i>Callback URL</i> = URL from Callback Script Data (see above on this page)</li>
-                            <li><i>Verify Token</i> = Verify Token from Callback Script Data (see above on this page)</li>
-                            <li><i>Subscription Fields</i> - check <i>leadgen</i></li>
-                        </ul>
-                    </li>
-                    <li>Click <i>Verify and Save</i> button</li>
                     <li>Go to App Dashboard->Settings and provide App Domains(example:bizhive.com), click Add Platform->Website and provide Site URL (example:https://bizhive.com)</li>
                 </ul>
             </li>
             <li>
                 Generate config for callback script using Config Wizard
                 <ul>
-                    <li>Fill in <i>App Id</i> and <i>App Secret</i> fields and click button <i>List Available Pages</i></li>
+                    <li>Fill in <i>App Id</i> and <i>App Secret</i> fields and click button <i>Start Subscription Process</i></li>
                     <li>Choose Page you want to subscribe to the App, then click Save Config</li>
                     <li>After saving config all new leads confirmations from selected page will go to the callback script</li>
                 </ul>
@@ -94,30 +88,23 @@
 
 <script>
 
+
+
+
+
+
 jQuery(function($){
     var conf = {
         "appId": '',
         "appSecret": '',
         "appName": '',
+        "appAccessToken":'',
+        "userToken":'',
         "accessToken": '',
         "pageAccessToken": '',
         "pageId": '',
         "pageName": ''
     }
-        
-    $("#listBtn").click(function(e){
-        e.preventDefault();
-        var appId = $("#fld_lead_app_id").val();
-        var appSecret = $("#fld_lead_app_secret").val();
-        if(appId != '' && appSecret != ''){
-            conf.appId = appId;
-            conf.appSecret = appSecret;
-            initWizard();
-        }else{
-            alert("Please provide App Id and App Secret fields");
-        }
-        
-    });
     
     
     
@@ -136,7 +123,25 @@ jQuery(function($){
     
     
     
-    function initWizard(){
+    $("#startSubscription").click(function(e){
+        e.preventDefault();
+        var appId = $("#fld_lead_app_id").val();
+        var appSecret = $("#fld_lead_app_secret").val();
+        
+        if(appId != '' && appSecret != ''){
+            conf.appId = appId;
+            conf.appSecret = appSecret;
+            $(this).hide();
+            processSubscription();
+        }else{
+            alert("Please provide App Id and App Secret");
+        }
+    });
+    
+    
+    
+    function processSubscription(){
+        
         FB.init({
             appId      : conf.appId,
             xfbml      : true,
@@ -144,102 +149,160 @@ jQuery(function($){
         });
         
         
+        // Getting user token with manage_pages, ads_read permissions
+        getUserToken()
+        .then(function(){
+            return getApplicationToken();
+        })
+        .then(function(){
+            return getApplicationName();
+        })
+        .then(function(){
+            return addApplicationWebhook();
+        })
+        .then(function(){
+            // Gitting permanent user token to use it for server-to-server script
+            return getAccessToken();
+        })
+        .then(function(){
+            return listAvailablePages();
+        });
+        
+    }
+    
+    
+    function getUserToken(){
+        var dfd = $.Deferred();
         FB.login(function(response) {
             if (response.authResponse) {
-                console.log('Success logged ', response);
-                
-                getAppName();
-                
-                getAccessToken(response.authResponse.accessToken);
-                
-                listAvailablePages();
-                
+                console.log('getUserToken(): token received ', response);
+                conf.userToken = response.authResponse.accessToken;
+                $('<li>').html("<span>&#10004;</span> User token received").appendTo($('#processStatus'));
+                dfd.resolve();
             } else {
              alert('User cancelled login or did not fully authorize.');
             }
         }, {scope: 'manage_pages,ads_read'});
+        return dfd.promise();
     }
     
     
-    function getAppName(){
-        FB.api(conf.appId, function(response) {
-            if(typeof response.error != 'undefined'){
-                console.log('ERROR', response);
-                alert(response.error.message);
-            }else{
-                conf.appName = response.name;
+    
+    function getApplicationToken(){
+        return $.get(
+            'https://graph.facebook.com/oauth/access_token',
+            {
+                'client_id': conf.appId,
+                'client_secret': conf.appSecret,
+                'grant_type': 'client_credentials'
             }
+        ).done(function(response){
+            console.log('getApplicationToken(): token received:', response);
+            $('<li>').html("<span>&#10004;</span> Application token received").appendTo($('#processStatus'));
+            conf.appAccessToken = response.replace('access_token=', '');
         });
     }
     
     
     
-    function getAccessToken(shortLivedToken){
-        $.get(
+    function addApplicationWebhook(){
+        return $.post(
+            'https://graph.facebook.com/v2.5/'+conf.appId+'/subscriptions',
+            {
+                'access_token':conf.appAccessToken,
+                'object': 'page',
+                'fields': 'leadgen',
+                'verify_token': $("#verify_tkn").val(),
+                'callback_url': $("#callback_url").val()
+            }
+        ).done(function(response){
+            console.log('addApplicationWebhook(): subscription added:', response);
+            $('<li>').html("<span>&#10004;</span>Application Webhook added").appendTo($('#processStatus'));
+        }).fail(function(response){
+            console.log('addApplicationWebhook(): FAILED:', response);
+            $('<li>').html("<span>❌</span> Application Webhook FAILED").appendTo($('#processStatus'));
+        });
+    }
+    
+    
+    
+    function getApplicationName(){
+        return $.get(
+            'https://graph.facebook.com/v2.5/'+conf.appId,
+            {'access_token': conf.appAccessToken}
+        ).done(function(response){
+            console.log('getApplicationName(): name received:', response);
+            $('<li>').html("<span>&#10004;</span> Application name received").appendTo($('#processStatus'));
+            conf.appName = response.name;
+        });
+    }
+    
+    
+    
+    function getAccessToken(){
+        return $.get(
             'https://graph.facebook.com/oauth/access_token',
             {
                 'client_id': conf.appId,
                 'client_secret': conf.appSecret,
                 'grant_type': 'fb_exchange_token',
-                'fb_exchange_token': shortLivedToken
+                'fb_exchange_token': conf.userToken
             }
         )
-        .done(function(tokenResp){
-            console.log('Access Token received:', tokenResp);
-            conf.accessToken = tokenResp.replace('access_token=', '');
+        .done(function(response){
+            console.log('getAccessToken: permanent token received', response);
+            $('<li>').html("<span>&#10004;</span> Permanent access token received").appendTo($('#processStatus'));
+            conf.accessToken = response.replace('access_token=', '');
         })
-        .fail(function(){alert('Getting token error')});
     }
     
     
     
     function listAvailablePages(){
-        FB.api('/me/accounts', {"access_token":conf.accessToken}, function(response) {
-            if(typeof response.error != 'undefined'){
-                console.log('ERROR', response);
-                alert(response.error.message);
-            }else{
-                var $select = $("#pages_list").change(function(){
-                    conf.pageId = this.value;
-                    conf.pageName = this.options[this.selectedIndex].text;
-                    conf.pageAccessToken = this.options[this.selectedIndex].dataset.pageToken;
-                    
-                    subscribePage();
-                    
-                });
-                response.data.forEach(function(v, i){
-                    $('<option>')
-                        .val(v.id)
-                        .text(v.name)
-                        .attr('data-page-token', v.access_token)
-                        .appendTo($select);
-                });
-                $('#list_btn_block').hide();
-                $('#pages_block').show();
-            }
+        return $.get(
+            'https://graph.facebook.com/v2.5/me/accounts',
+            {'access_token': conf.accessToken}
+        ).done(function(response){
+            console.log('listAvailablePages(): pages received:', response);
+            $('<li>').html("<span>&#10004;</span> listAvailablePages received").appendTo($('#processStatus'));
+            
+            var $select = $("#pages_list").change(function(){
+                conf.pageId = this.value;
+                conf.pageName = this.options[this.selectedIndex].text;
+                conf.pageAccessToken = this.options[this.selectedIndex].dataset.pageToken;
+                
+                subscribePage();
+            });
+            response.data.forEach(function(v, i){
+                $('<option>')
+                    .val(v.id)
+                    .text(v.name)
+                    .attr('data-page-token', v.access_token)
+                    .appendTo($select);
+            });
+            $('#list_btn_block').hide();
+            $('#pages_block').show();
+            
         });
     }
     
     
     
     function subscribePage(){
-        FB.api(
-            '/' + conf.pageId + '/subscribed_apps',
-            'post',
-            {access_token: conf.pageAccessToken},
-            function(response) {
-                if(typeof response.error != 'undefined'){
-                    console.log('ERROR', response);
-                    alert(response.error.message);
-                }else{
-                    $("#save_conf_block").show();
-                }
-            }
-        );
+        return $.post(
+            'https://graph.facebook.com/v2.5/'+conf.pageId+'/subscribed_apps',
+            {'access_token': conf.pageAccessToken}
+        ).done(function(response){
+            console.log('subscribePage(): page subscribed:', response);
+            $('<li>').html("<span>&#10004;</span> Page "+conf.pageName+" subscribed to the Application").appendTo($('#processStatus'));
+            $("#pages_block").hide();
+            $("#save_conf_block").show();
+        });
+        
     }
     
-});
 
+});
 
 
 // FB Graph API js SDK
@@ -250,7 +313,6 @@ js = d.createElement(s); js.id = id;
 js.src = "//connect.facebook.net/en_US/sdk.js";
 fjs.parentNode.insertBefore(js, fjs);
 }(document, 'script', 'facebook-jssdk'));
-
 
 
 </script>
