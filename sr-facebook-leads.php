@@ -41,7 +41,7 @@ class SRFacebookLeads{
         
         // Add Settings page as Forms submenu
         add_filter( 'gform_addon_navigation', [$this, 'addSettingsPage']);
-        add_action('admin_enqueue_scripts', [$this, 'addAdminStyles']);
+        //add_action('admin_enqueue_scripts', [$this, 'addAdminStyles']);
         
         
         // Callback script for webhook
