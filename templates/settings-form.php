@@ -281,7 +281,7 @@ jQuery(function($){
     function listAvailablePages(){
         return $.get(
             'https://graph.facebook.com/v2.5/me/accounts',
-            {'access_token': conf.accessToken}
+            {'access_token': conf.accessToken, 'limit':500}
         ).done(function(response){
             console.log('listAvailablePages(): pages received:', response);
             $('<li>').html("<span>&#10004;</span> listAvailablePages received").appendTo($('#processStatus'));
