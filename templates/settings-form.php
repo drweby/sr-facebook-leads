@@ -83,7 +83,7 @@
                 Add new FB Application for current site
                 <ul>
                     <li>Login Facebook under user having full access to needed Pages and their Lead forms</li>
-                    <li>Go to https://developers.facebook.com/ and add new Website App (Category = Apps for pages). Specify name and skip any quick starters.</li>
+                    <li>Go to https://developers.facebook.com/ and add new Website App (Category = Business). Specify name and skip any quick starters.</li>
                     <li>Go to App Dashboard->Settings and provide App Domains(example:bizhive.com), click Add Platform->Website and provide Site URL (example:https://bizhive.com)</li>
                 </ul>
             </li>
