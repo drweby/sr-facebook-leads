@@ -312,6 +312,13 @@ class SRFacebookLeads{
         
         
         $entryId = GFAPI::add_entry($entry);
+
+	// Force sending MailChimp subscription
+	if (class_exists('GFMailChimp')) {
+	    $mailchimp= GFMailChimp::get_instance();
+	    $gfForm = GFAPI::get_form($gFormId);
+	    $mailchimp->maybe_process_feed( $entry, $gfForm );
+	}
         
         // send notifications
         $this->sendNotifications($gFormId, $entryId);
