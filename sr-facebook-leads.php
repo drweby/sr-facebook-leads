@@ -2,7 +2,7 @@
 /**
  * Plugin Name: SR Facebook Leads Ads Integration
  * Description: This plugin registers Facebook lead forms submissions using Gravity Forms
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: StartupRunner
  * Author URI: http://startuprunner.com
  * License: None
