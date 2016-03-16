@@ -2,7 +2,7 @@
 /**
  * Plugin Name: SR Facebook Leads Ads Integration
  * Description: This plugin registers Facebook lead forms submissions using Gravity Forms
- * Version: 1.2.0
+ * Version: 1.3.0
  * Author: StartupRunner
  * Author URI: http://startuprunner.com
  * License: None
@@ -313,12 +313,18 @@ class SRFacebookLeads{
         
         $entryId = GFAPI::add_entry($entry);
 
-	// Force sending MailChimp subscription
-	if (class_exists('GFMailChimp')) {
-	    $mailchimp= GFMailChimp::get_instance();
-	    $gfForm = GFAPI::get_form($gFormId);
-	    $mailchimp->maybe_process_feed( $entry, $gfForm );
-	}
+	    // Force trigger MailChimp plugin
+        if (class_exists('GFMailChimp')) {
+            $mailchimp= GFMailChimp::get_instance();
+            $gfForm = GFAPI::get_form($gFormId);
+            $mailchimp->maybe_process_feed( $entry, $gfForm );
+        }
+        
+        // Force trigger Zapier plugin
+        if(class_exists('GFZapier')){
+            $gfForm = GFAPI::get_form($gFormId);
+            GFZapier::send_form_data_to_zapier($entry, $gfForm);
+        }
         
         // send notifications
         $this->sendNotifications($gFormId, $entryId);
