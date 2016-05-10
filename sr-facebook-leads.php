@@ -263,7 +263,7 @@ class SRFacebookLeads{
         $gForms = GFAPI::get_forms();
 
         foreach($gForms as $gForm){
-            if(isset($gForm['mapped_lead_form']) && in_array($leadFormId, $gForm['mapped_lead_form'])){
+            if(isset($gForm['mapped_lead_form']) && is_array($gForm['mapped_lead_form']) && in_array($leadFormId, $gForm['mapped_lead_form'])){
                 return $gForm['id'];
             }
         }
