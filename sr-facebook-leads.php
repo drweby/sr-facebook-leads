@@ -2,7 +2,7 @@
 /**
  * Plugin Name: SR Facebook Leads Ads Integration
  * Description: This plugin registers Facebook lead forms submissions using Gravity Forms
- * Version: 1.5.0
+ * Version: 1.6.0
  * Author: StartupRunner
  * Author URI: http://startuprunner.com
  * License: None
@@ -18,6 +18,8 @@ class SRFacebookLeads{
     private $graphApiUrl = "https://graph.facebook.com/v2.5";
 
     private $config = [];
+
+    private $lastLeadOptionName = 'lastFBLeadId';
 
 
     public static function getInstance()
@@ -244,9 +246,11 @@ class SRFacebookLeads{
                     if($change['field'] == 'leadgen'){
                         $leadFormId = $change['value']['form_id'];
                         $leadgenId = $change['value']['leadgen_id'];
-                        if(null != $gFormId = $this->getMappedForm($leadFormId)){
-                            if($leadUserInfo = $this->getLeadUserInfo($leadgenId)){
-                                $this->addGFEntry($leadUserInfo, $gFormId);
+                        if(!$this->isLeadDuplicate($leadgenId)){
+                            if (null != $gFormId = $this->getMappedForm($leadFormId)) {
+                                if ($leadUserInfo = $this->getLeadUserInfo($leadgenId)) {
+                                    $this->addGFEntry($leadUserInfo, $gFormId);
+                                }
                             }
                         }
                     }
@@ -255,6 +259,17 @@ class SRFacebookLeads{
         }
     }
 
+
+
+    private function isLeadDuplicate($leadgenId){
+        $lastLeadId = get_option($this->lastLeadOptionName);
+        if($lastLeadId && $leadgenId == $lastLeadId){
+            return true;
+        }else{
+            update_option($this->lastLeadOptionName, $leadgenId);
+            return false;
+        }
+    }
 
 
 
